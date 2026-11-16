@@ -2,6 +2,7 @@
 name = "mmlabs-auth"
 version = "0.1.0"
 description = "Access-token verification (JWKS, ES256), role catalog cache and FastAPI require_permission() for mmlabs Identity."
+readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "PyJWT[crypto]>=2.10.1,<3",

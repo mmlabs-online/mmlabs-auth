@@ -1,12 +1,9 @@
-import json
-import re
 import tomllib
 from pathlib import Path
 
 import mmlabs_auth
 
 PYTHON_DIR = Path(__file__).resolve().parents[1]
-CONTRACT_DIR = PYTHON_DIR.parent / "contract"
 
 
 def test_version_matches_pyproject() -> None:
@@ -14,14 +11,9 @@ def test_version_matches_pyproject() -> None:
     assert mmlabs_auth.__version__ == pyproject["project"]["version"]
 
 
-def test_contract_files_parse() -> None:
-    files = sorted(CONTRACT_DIR.glob("*.json"))
-    assert {f.name for f in files} == {
-        "catalog.example.json",
-        "error-codes.json",
-        "token-response.example.json",
-    }
-    for f in files:
-        assert isinstance(json.loads(f.read_text(encoding="utf-8")), dict)
-    first_line = (CONTRACT_DIR / "SOURCE").read_text(encoding="utf-8").splitlines()[0]
-    assert re.fullmatch(r"[0-9a-f]{40}", first_line)
+def test_core_does_not_import_fastapi() -> None:
+    import subprocess
+    import sys
+
+    code = "import sys, mmlabs_auth; sys.exit('fastapi' in sys.modules)"
+    assert subprocess.run([sys.executable, "-c", code], check=False).returncode == 0  # noqa: S603

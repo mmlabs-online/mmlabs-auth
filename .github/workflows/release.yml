@@ -1,0 +1,125 @@
+name: release
+
+# Push a tag `ts-vX.Y.Z` or `py-vX.Y.Z` to publish a GitHub Release for that package.
+# See docs/adr/0001-packaging-and-release.md.
+
+on:
+  push:
+    tags:
+      - "ts-v*"
+      - "py-v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ts:
+    if: startsWith(github.ref_name, 'ts-v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write # gh release create (the only write in this repo)
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          package_json_file: ts/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Check tag matches ts/package.json version
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          pkg="$(node -p "require('./ts/package.json').version")"
+          if [ "$TAG" != "ts-v$pkg" ]; then
+            echo "::error::tag $TAG does not match ts/package.json version $pkg"
+            exit 1
+          fi
+          echo "version=$pkg" >> "$GITHUB_OUTPUT"
+      - run: pnpm -C ts install --frozen-lockfile
+      - run: pnpm -C ts lint
+      - run: pnpm -C ts typecheck
+      - run: pnpm -C ts test
+      - run: pnpm -C ts build
+      - name: Pack
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/dist"
+          pnpm -C ts pack --pack-destination "$RUNNER_TEMP/dist"
+          test -f "$RUNNER_TEMP/dist/mmlabs-auth-client-$VERSION.tgz"
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          cd "$RUNNER_TEMP/dist"
+          {
+            echo "@mmlabs/auth-client $TAG"
+            echo
+            echo "SHA-256:"
+            echo '```'
+            sha256sum ./*.tgz
+            echo '```'
+          } > notes.md
+          gh release create "$TAG" ./*.tgz --title "$TAG" --notes-file notes.md --verify-tag
+
+  py:
+    if: startsWith(github.ref_name, 'py-v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write # gh release create (the only write in this repo)
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: "3.12"
+          enable-cache: false
+      - name: Check tag matches python/pyproject.toml version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          pkg="$(uv run --no-project python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          if [ "$TAG" != "py-v$pkg" ]; then
+            echo "::error::tag $TAG does not match python/pyproject.toml version $pkg"
+            exit 1
+          fi
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy
+      - run: uv run pytest
+      - name: Build sdist and wheel
+        run: uv build --out-dir "$RUNNER_TEMP/dist"
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          cd "$RUNNER_TEMP/dist"
+          {
+            echo "mmlabs-auth (Python) $TAG"
+            echo
+            echo "SHA-256:"
+            echo '```'
+            sha256sum ./*.tar.gz ./*.whl
+            echo '```'
+          } > notes.md
+          gh release create "$TAG" ./*.tar.gz ./*.whl --title "$TAG" --notes-file notes.md --verify-tag

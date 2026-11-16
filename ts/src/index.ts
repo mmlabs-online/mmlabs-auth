@@ -1,0 +1,33 @@
+export { AuthClient, createAuthClient } from "./client.js";
+export {
+  AuthError,
+  type AuthErrorInit,
+  ConfigurationError,
+  EmailAlreadyVerifiedError,
+  EmailTakenError,
+  EmailUnverifiedError,
+  InvalidCredentialsError,
+  JoinUnavailableError,
+  NetworkError,
+  NotMemberError,
+  RateLimitedError,
+  SessionInvalidError,
+  TokenInvalidError,
+  TurnstileFailedError,
+  TurnstileRequiredError,
+  ValidationError,
+  type ValidationIssue,
+  WeakPasswordError,
+} from "./errors.js";
+export type {
+  Account,
+  AuthClientOptions,
+  AuthEvent,
+  BroadcastFactory,
+  BroadcastLike,
+  GetTokenOptions,
+  LoginResult,
+  LogoutTarget,
+  SignupResult,
+  StorageLike,
+} from "./types.js";

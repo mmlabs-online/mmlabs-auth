@@ -1,0 +1,44 @@
+name: ts
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ts/**"
+      - "contract/**"
+      - ".github/workflows/ts.yml"
+  pull_request:
+    paths:
+      - "ts/**"
+      - "contract/**"
+      - ".github/workflows/ts.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ts-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          package_json_file: ts/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: ts/pnpm-lock.yaml
+      - run: pnpm -C ts install --frozen-lockfile
+      - run: pnpm -C ts lint
+      - run: pnpm -C ts typecheck
+      - run: pnpm -C ts test
+      - run: pnpm -C ts build
+      - run: pnpm -C ts audit --prod

@@ -1,0 +1,20 @@
+{
+  "headers": { "ETag": "\"3f1c9a0e7b2d4c58\"", "Cache-Control": "no-cache" },
+  "body": {
+    "app": "ricotdin",
+    "roles": [
+      {
+        "key": "ricotdin:admin",
+        "name": "Admin",
+        "is_system": true,
+        "permissions": ["ricotdin:*"]
+      },
+      {
+        "key": "ricotdin:member",
+        "name": "Member",
+        "is_system": true,
+        "permissions": ["ricotdin:notes:read"]
+      }
+    ]
+  }
+}

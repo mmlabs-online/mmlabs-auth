@@ -41,5 +41,4 @@ download without authentication.
 - Upgrading is explicit: a consumer changes the pinned tag or vendored file.
 - Moving to a registry later is additive (publish the same artefacts); the tag scheme stays.
 - **Deferred:** provenance / build attestations for Release artefacts.
-- **Open:** the repository has no `LICENSE` yet. Public visibility does not grant reuse rights;
-  the licence is pending the owner's decision.
+- **Licence:** MIT (owner's decision, 2026-11-16), in the root `LICENSE`.

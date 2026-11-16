@@ -53,4 +53,4 @@ version in `ts/package.json` or `python/pyproject.toml`, merge to `main`, then p
 builds and creates the GitHub Release with SHA-256 sums in the notes.
 Rationale: [`docs/adr/0001-packaging-and-release.md`](docs/adr/0001-packaging-and-release.md).
 
-No `LICENSE` yet (pending the owner's decision).
+[MIT](LICENSE).

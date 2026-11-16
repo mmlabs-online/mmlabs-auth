@@ -2,6 +2,7 @@
   "name": "@mmlabs/auth-client",
   "version": "0.1.0",
   "description": "Browser client for mmlabs Identity: sign-in, account choice, per-app access tokens, logout; React wrapper.",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.28.0",

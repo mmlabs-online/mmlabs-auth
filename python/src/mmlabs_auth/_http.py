@@ -84,7 +84,7 @@ async def fetch_json(
     """200 → parsed JSON body; 304 → no body; any other non-3xx status → no body (the caller
     decides). Raises `FetchError` on a redirect, network error, timeout, oversize or bad JSON."""
     check_url(url, allow_insecure_loopback=allow_insecure_loopback)
-    headers = {"Accept": "application/json"}
+    headers = {"Accept": "application/json", "Accept-Encoding": "identity"}
     if etag is not None:
         headers["If-None-Match"] = etag
     try:
@@ -115,6 +115,6 @@ async def fetch_json(
         raise FetchError("network") from None
     try:
         parsed = json.loads(bytes(body))
-    except (ValueError, UnicodeDecodeError):
+    except (ValueError, UnicodeDecodeError, RecursionError):
         raise FetchError("invalid_json") from None
     return FetchResult(200, parsed, new_etag, max_age)

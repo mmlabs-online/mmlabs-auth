@@ -1,6 +1,7 @@
 """Async JWKS cache keyed by `kid` (USR-03c S1/S2).
 
-- TTL from `Cache-Control: max-age`, capped at `max_ttl` (1 h); `default_ttl` (300 s) without it.
+- TTL from `Cache-Control: max-age`, floored at 30 s, capped at `max_ttl` (1 h);
+  `default_ttl` (300 s) without it.
   Revalidation sends `If-None-Match`; a 304 keeps the keys and extends the TTL.
 - An unknown `kid` refetches at most once per `cooldown` (60 s), also after a failed fetch.
   A failed refresh is not retried before `cooldown` either.
@@ -25,6 +26,7 @@ from mmlabs_auth.access_token import MAX_KID_LENGTH
 from mmlabs_auth.errors import JwksUnavailableError
 
 JWKS_MAX_BYTES = 65_536
+MIN_TTL = 30.0  # floor: `max-age=0` must not cause a refetch on every verification
 _COORD_BYTES = 32
 
 
@@ -164,4 +166,4 @@ class JwksCache:
         self._etag = result.etag
         self._ok_at = now
         ttl = self._default_ttl if result.max_age is None else result.max_age
-        self._fresh_until = now + max(0.0, min(float(ttl), self._max_ttl))
+        self._fresh_until = now + min(max(float(ttl), MIN_TTL), self._max_ttl)

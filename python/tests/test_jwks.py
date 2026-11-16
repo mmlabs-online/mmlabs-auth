@@ -229,3 +229,29 @@ def test_http_url_refused() -> None:
     JwksCache(
         "http://localhost:8000/.well-known/jwks.json", user_agent=UA, allow_insecure_loopback=True
     )
+
+
+@respx.mock
+@pytest.mark.parametrize("max_age", [0, 5])
+async def test_ttl_floor_30s(clock: FakeClock, key: KeyPair, max_age: int) -> None:
+    route = respx.get(JWKS_URL).mock(return_value=_ok(key, max_age=max_age))
+    cache = _cache(clock)
+    await cache.keys()
+    await cache.keys()
+    clock.advance(29)
+    await cache.keys()
+    assert route.call_count == 1
+    clock.advance(1)
+    await cache.keys()
+    assert route.call_count == 2
+
+
+@respx.mock
+async def test_deeply_nested_json_fails_closed_with_cooldown(clock: FakeClock) -> None:
+    route = respx.get(JWKS_URL).respond(200, content=b"[" * 60000)
+    cache = _cache(clock)
+    with pytest.raises(JwksUnavailableError):
+        await cache.keys()
+    with pytest.raises(JwksUnavailableError):
+        await cache.keys()
+    assert route.call_count == 1

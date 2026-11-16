@@ -204,3 +204,13 @@ async def test_contract_example_parses(clock: FakeClock) -> None:
     )
     cache = _cache(clock)
     assert await cache.permissions_for(["ricotdin:admin"]) == {"ricotdin:*"}
+
+
+@respx.mock
+async def test_deeply_nested_json_fails_closed_with_cooldown(clock: FakeClock) -> None:
+    route = respx.get(CATALOG_URL).respond(200, content=b"[" * 60000)
+    cache = _cache(clock)
+    for _ in range(2):
+        with pytest.raises(CatalogUnavailableError):
+            await cache.permissions_for(["ricotdin:member"])
+    assert route.call_count == 1

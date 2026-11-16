@@ -117,3 +117,18 @@ async def test_invalid_json_raises(client: httpx.AsyncClient) -> None:
     with pytest.raises(FetchError) as exc_info:
         await fetch_json(client, JWKS_URL, etag=None, max_bytes=100)
     assert exc_info.value.reason == "invalid_json"
+
+
+@respx.mock
+async def test_accept_encoding_identity_sent(client: httpx.AsyncClient) -> None:
+    route = respx.get(JWKS_URL).respond(200, json={})
+    await fetch_json(client, JWKS_URL, etag=None, max_bytes=100)
+    assert route.calls.last.request.headers["accept-encoding"] == "identity"
+
+
+@respx.mock
+async def test_deeply_nested_json_is_invalid_json(client: httpx.AsyncClient) -> None:
+    respx.get(JWKS_URL).respond(200, content=b"[" * 60000)
+    with pytest.raises(FetchError) as exc_info:
+        await fetch_json(client, JWKS_URL, etag=None, max_bytes=100_000)
+    assert exc_info.value.reason == "invalid_json"

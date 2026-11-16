@@ -23,7 +23,12 @@ function setup() {
     "GET /api/notes": () => empty(200),
   });
   // Default storage (localStorage) and default broadcast: the real browser path.
-  const client = createAuthClient({ baseUrl: BASE, appKey: "ricotdin", fetch: net.fetch });
+  const client = createAuthClient({
+    baseUrl: BASE,
+    appKey: "ricotdin",
+    fetch: net.fetch,
+    apiOrigins: ["https://ricotdin.mmlabs.online"],
+  });
   return { client, net };
 }
 

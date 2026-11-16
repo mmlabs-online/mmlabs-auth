@@ -104,6 +104,14 @@ describe("endpoints", () => {
     ]);
   });
 
+  it("resendVerification rejects a non-UUID accountId with TypeError, no fetch", async () => {
+    const { client, net } = makeClient({
+      "POST /api/v1/auth/verify-email/resend": () => empty(202),
+    });
+    await expect(client.resendVerification("not-a-uuid")).rejects.toBeInstanceOf(TypeError);
+    expect(net.calls).toHaveLength(0);
+  });
+
   it("forgotPassword 202 sends X-MM-App + include", async () => {
     const { client, net } = makeClient({ "POST /api/v1/auth/password/forgot": () => empty(202) });
     await client.forgotPassword({ email: SENTINEL_EMAIL, turnstileToken: "ts" });

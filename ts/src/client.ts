@@ -1,5 +1,5 @@
 import { AccountStore, defaultStorage, isUuid } from "./accounts.js";
-import { createFetchWithToken, type FetchWithToken } from "./bearer.js";
+import { createFetchWithToken, type FetchWithToken, normaliseOrigins } from "./bearer.js";
 import { Broadcast, type BroadcastMessage } from "./broadcast.js";
 import {
   AuthError,
@@ -53,8 +53,10 @@ export class AuthClient {
     this.appKey = options.appKey;
     const fetchImpl = options.fetch ?? globalThis.fetch.bind(globalThis);
     this.#now = options.now ?? Date.now;
+    const allowInsecureLocalhost = options.allowInsecureLocalhost === true;
+    const baseUrl = normaliseBaseUrl(options.baseUrl, allowInsecureLocalhost);
     this.#transport = createTransport({
-      baseUrl: normaliseBaseUrl(options.baseUrl, options.allowInsecureLocalhost === true),
+      baseUrl,
       appKey: this.appKey,
       fetch: fetchImpl,
       now: this.#now,
@@ -66,12 +68,22 @@ export class AuthClient {
     this.#bearer = createFetchWithToken({
       fetch: fetchImpl,
       now: this.#now,
-      getToken: (forceRefresh) => this.getToken({ forceRefresh }),
+      baseUrl,
+      apiOrigins:
+        options.apiOrigins === undefined ? undefined : normaliseOrigins(options.apiOrigins),
+      allowInsecureLocalhost,
+      getAccountId: () => this.getAccountId(),
+      getToken: (accountId, forceRefresh) =>
+        accountId === null
+          ? Promise.reject(new AuthError("no_account_selected", 0))
+          : this.getToken({ accountId, forceRefresh }),
     });
     this.#broadcast = new Broadcast(this.appKey, options.broadcast ?? true, {
       onMessage: (message) => this.#onBroadcast(message),
-      onAccountStorage: () =>
-        this.#emit({ type: "account-changed", accountId: this.getAccountId() }),
+      onAccountStorage: () => {
+        this.#tokens.clearAll();
+        this.#emit({ type: "account-changed", accountId: this.getAccountId() });
+      },
     });
   }
 
@@ -164,7 +176,8 @@ export class AuthClient {
     const audience = typeof arg === "string" ? arg : this.appKey;
     const options = typeof arg === "object" ? arg : more;
     if (audience !== this.appKey) throw new ConfigurationError("audience_mismatch", 0);
-    const accountId = options.accountId ?? this.getAccountId();
+    const accountId =
+      options.accountId === undefined ? this.getAccountId() : requireAccountId(options.accountId);
     if (accountId === null) throw new AuthError("no_account_selected", 0);
     try {
       return await this.#tokens.get(accountId, audience, options.forceRefresh === true, () =>
@@ -211,7 +224,7 @@ export class AuthClient {
   }
 
   async resendVerification(accountId?: string): Promise<"sent" | "already_verified"> {
-    const id = accountId ?? this.getAccountId();
+    const id = accountId === undefined ? this.getAccountId() : requireAccountId(accountId);
     if (id === null) throw new AuthError("no_account_selected", 0);
     try {
       await this.#transport.authFetch("/api/v1/auth/verify-email/resend", "POST", {

@@ -112,7 +112,7 @@ describe("token cache", () => {
     expect(net.count(TOKEN)).toBe(3);
   });
 
-  it("in-flight result discarded after logout or account switch", async () => {
+  it("in-flight result rejected (account_changed), not returned or cached, after logout or account switch", async () => {
     for (const interrupt of ["logout", "switch"] as const) {
       const gate = deferred<Response>();
       const { client, net } = makeClient({
@@ -124,10 +124,36 @@ describe("token cache", () => {
       if (interrupt === "logout") await client.logout({ accountId: ACCOUNT_A });
       else client.selectAccount(ACCOUNT_B);
       gate.resolve(tokenResponse("before"));
-      expect(await inflight).toBe("before");
+      const error = await inflight.catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(AuthError);
+      expect((error as AuthError).code).toBe("account_changed");
+      expect((error as AuthError).status).toBe(0);
       expect(await client.getToken({ accountId: ACCOUNT_A })).toBe("after");
       expect(net.count(TOKEN)).toBe(2);
     }
+  });
+
+  it("in-flight result rejected for every waiting caller after logout of that account", async () => {
+    const gate = deferred<Response>();
+    const { client } = makeClient({
+      [TOKEN]: () => gate.promise,
+      "POST /api/v1/auth/logout": () => empty(204),
+    });
+    client.selectAccount(ACCOUNT_A);
+    const calls = [client.getToken(), client.getToken({ accountId: ACCOUNT_A })];
+    await client.logout({ accountId: ACCOUNT_A });
+    gate.resolve(tokenResponse("before"));
+    for (const result of await Promise.all(calls.map((c) => c.catch((e: unknown) => e)))) {
+      expect((result as AuthError).code).toBe("account_changed");
+    }
+  });
+
+  it("getToken({accountId}) rejects a non-UUID accountId with TypeError, no fetch", async () => {
+    const { client, net } = makeClient({ [TOKEN]: () => tokenResponse() });
+    for (const accountId of ["x", `${ACCOUNT_A}|ricotdin`, ""]) {
+      await expect(client.getToken({ accountId })).rejects.toBeInstanceOf(TypeError);
+    }
+    expect(net.calls).toHaveLength(0);
   });
 
   it("no account selected → AuthError no_account_selected, no fetch", async () => {

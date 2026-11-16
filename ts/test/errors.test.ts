@@ -52,6 +52,24 @@ describe("error mapping", () => {
     expect(error.status).toBe(400);
   });
 
+  it("a server code that is not snake_case (≤ 64 chars) → AuthError unexpected_response", async () => {
+    for (const code of [
+      "Contact alice@example.com",
+      "Not_Snake",
+      "1abc",
+      "a".repeat(65),
+      "",
+      "rate limited",
+    ]) {
+      const error = await errorFrom(envelope(400, code));
+      expect(error.constructor).toBe(lib.AuthError);
+      expect(error.code).toBe("unexpected_response");
+      expect(error.message).toBe("mmlabs-auth: unexpected_response");
+      expect(error.status).toBe(400);
+    }
+    expect((await errorFrom(envelope(400, "a".repeat(64)))).code).toBe("a".repeat(64));
+  });
+
   it("RateLimitedError.retryAfter from Retry-After seconds", async () => {
     const error = await errorFrom(
       envelope(429, "rate_limited", { retry_after: 99 }, { "Retry-After": "17" }),

@@ -26,7 +26,10 @@ export interface BroadcastHandlers {
   onAccountStorage(): void;
 }
 
-/** `BroadcastChannel("mmlabs-auth:<appKey>")` plus the `storage` event; no-op without either. */
+/**
+ * `BroadcastChannel("mmlabs-auth:<appKey>")`, or the `storage` event when no channel exists;
+ * no-op without either.
+ */
 export class Broadcast {
   readonly #channel: BroadcastLike | null = null;
   readonly #onStorage: ((event: Event) => void) | null = null;
@@ -48,7 +51,8 @@ export class Broadcast {
     } catch {
       this.#channel = null;
     }
-    if (typeof globalThis.addEventListener === "function") {
+    // Fallback only: with a channel, the same change would otherwise be handled twice.
+    if (this.#channel === null && typeof globalThis.addEventListener === "function") {
       this.#onStorage = (event) => {
         if ((event as StorageEvent).key === ACCOUNT_KEY) handlers.onAccountStorage();
       };

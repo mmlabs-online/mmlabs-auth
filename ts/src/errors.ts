@@ -120,6 +120,9 @@ export class RateLimitedError extends AuthError {
   }
 }
 
+/** A server code must look like one (`snake_case`, ≤ 64 chars); anything else is not trusted. */
+const CODE_RE = /^[a-z][a-z0-9_]{0,63}$/;
+
 type ErrorClass = new (code: string, status: number, init?: AuthErrorInit) => AuthError;
 
 const BY_CODE: Record<string, ErrorClass> = {
@@ -154,7 +157,7 @@ export function mapError(
 ): AuthError {
   const requestId = headers.get("X-Request-ID") ?? undefined;
   const error = isRecord(body) ? body.error : undefined;
-  if (!isRecord(error) || typeof error.code !== "string") {
+  if (!isRecord(error) || typeof error.code !== "string" || !CODE_RE.test(error.code)) {
     return new AuthError("unexpected_response", status, { requestId });
   }
   const { code, details } = error;

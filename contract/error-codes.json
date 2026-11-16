@@ -28,6 +28,8 @@
   },
   "library_codes": {
     "ts": {
+      "account_changed": { "status": 0, "class": "AuthError" },
+      "bearer_origin_not_allowed": { "status": 0, "class": "ConfigurationError" },
       "no_account_selected": { "status": 0, "class": "AuthError" },
       "network_error": { "status": 0, "class": "NetworkError" },
       "unexpected_response": { "status": 0, "class": "AuthError" }

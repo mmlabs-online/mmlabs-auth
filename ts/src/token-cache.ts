@@ -1,4 +1,5 @@
-import { RateLimitedError } from "./errors.js";
+import { AuthError, RateLimitedError } from "./errors.js";
+import { MAX_RETRY_AFTER } from "./retry-after.js";
 
 export interface IssuedToken {
   token: string;
@@ -18,8 +19,9 @@ export function freshUntil(receivedAt: number, expiresIn: number): number {
 
 /**
  * In-memory access tokens keyed by `account|audience`. One request per key at a time
- * (single-flight); a result that lands after logout or an account switch is handed to its
- * callers but not cached (generation check). No timers: refresh happens on the next call.
+ * (single-flight); a result that lands after logout or an account switch is neither cached
+ * nor returned: its callers get `AuthError("account_changed")` (generation check). No
+ * timers: refresh happens on the next call.
  */
 export class TokenCache {
   readonly #now: () => number;
@@ -70,16 +72,16 @@ export class TokenCache {
   ): Promise<string> {
     try {
       const issued = await fetcher();
-      if (this.#stamp(accountId) === stamp) {
-        this.#tokens.set(key, {
-          token: issued.token,
-          freshUntil: freshUntil(this.#now(), issued.expiresIn),
-        });
-      }
+      if (this.#stamp(accountId) !== stamp) throw new AuthError("account_changed", 0);
+      this.#tokens.set(key, {
+        token: issued.token,
+        freshUntil: freshUntil(this.#now(), issued.expiresIn),
+      });
       return issued.token;
     } catch (error) {
       if (error instanceof RateLimitedError) {
-        this.#blockedUntil.set(audience, this.#now() + error.retryAfter * 1000);
+        const seconds = Math.min(MAX_RETRY_AFTER, error.retryAfter);
+        this.#blockedUntil.set(audience, this.#now() + seconds * 1000);
       }
       throw error;
     }

@@ -1,7 +1,7 @@
 import { AuthError, mapError, NetworkError } from "./errors.js";
 
 const AUTH_PREFIX = "/api/v1/auth/";
-const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]"]);
+export const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 /** Validates `baseUrl` (https, or loopback http when allowed) and drops a trailing slash. */
 export function normaliseBaseUrl(raw: string, allowInsecureLocalhost: boolean): string {
@@ -51,6 +51,18 @@ export function unexpected(resp: Response): AuthError {
 }
 
 export function createTransport(deps: TransportDeps): Transport {
+  const authRoot = new URL(deps.baseUrl + AUTH_PREFIX).pathname;
+
+  /** Prefix check on the resolved pathname; dot segments (`..`, `%2e`) are refused outright. */
+  function isAuthPath(path: string): boolean {
+    if (!path.startsWith(AUTH_PREFIX) || /\.\.|%2e/i.test(path)) return false;
+    try {
+      return new URL(deps.baseUrl + path).pathname.startsWith(authRoot);
+    } catch {
+      return false;
+    }
+  }
+
   async function send(path: string, init: RequestInit): Promise<Response> {
     let resp: Response;
     try {
@@ -70,7 +82,7 @@ export function createTransport(deps: TransportDeps): Transport {
 
   return {
     authFetch(path, method, body) {
-      if (!path.startsWith(AUTH_PREFIX)) {
+      if (!isAuthPath(path)) {
         throw new TypeError("mmlabs-auth: authFetch only calls /api/v1/auth/*");
       }
       const headers: Record<string, string> = { "X-MM-App": deps.appKey };

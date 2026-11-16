@@ -44,4 +44,4 @@ jobs:
       - name: pip-audit (runtime dependencies)
         run: |
           uv export --no-dev --no-hashes --no-emit-project --format requirements-txt > "$RUNNER_TEMP/req.txt"
-          uvx pip-audit -r "$RUNNER_TEMP/req.txt"
+          uvx pip-audit==2.10.1 -r "$RUNNER_TEMP/req.txt"

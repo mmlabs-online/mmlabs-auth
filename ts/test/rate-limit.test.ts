@@ -45,6 +45,43 @@ describe("429 handling", () => {
     expect(net.count(TOKEN)).toBe(2);
   });
 
+  it("Retry-After is clamped to [0, 900] s (huge, Infinity-sized, far-future date, past date)", async () => {
+    const { clock } = makeClient();
+    const cases: Array<[string, number]> = [
+      ["901", 900],
+      ["9".repeat(400), 900],
+      [new Date(clock.now() + 86_400_000).toUTCString(), 900],
+      [new Date(clock.now() - 60_000).toUTCString(), 0],
+    ];
+    for (const [header, expected] of cases) {
+      const {
+        client,
+        net,
+        clock: c,
+      } = makeClient({
+        [TOKEN]: [
+          () => envelope(429, "rate_limited", null, { "Retry-After": header }),
+          () => tokenResponse(),
+        ],
+      });
+      client.selectAccount(ACCOUNT_A);
+      const error = await client.getToken().catch((e: unknown) => e);
+      expect((error as RateLimitedError).retryAfter).toBe(expected);
+      c.advance(expected * 1000);
+      expect(await client.getToken()).toBeTruthy();
+      expect(net.count(TOKEN)).toBe(2);
+    }
+  });
+
+  it("details.retry_after fallback is clamped to 900 s", async () => {
+    const { client } = makeClient({
+      [TOKEN]: () => envelope(429, "rate_limited", { retry_after: 1e9 }),
+    });
+    client.selectAccount(ACCOUNT_A);
+    const error = await client.getToken().catch((e: unknown) => e);
+    expect((error as RateLimitedError).retryAfter).toBe(900);
+  });
+
   it("no automatic retry after 429", async () => {
     const { client, net } = makeClient({
       [TOKEN]: limited("1"),

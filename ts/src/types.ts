@@ -23,6 +23,12 @@ export interface AuthClientOptions {
   broadcast?: boolean | BroadcastFactory;
   /** Allows `http://localhost` / `127.0.0.1` / `[::1]` for local development. */
   allowInsecureLocalhost?: boolean;
+  /**
+   * Origins `fetchWithToken` may send the Bearer token to (https, or loopback http with
+   * `allowInsecureLocalhost`). Defaults to `[location.origin]`; required where there is no
+   * `location`. The identity API's `/api/v1/auth/*` never receives it.
+   */
+  apiOrigins?: string[];
 }
 
 export interface Account {

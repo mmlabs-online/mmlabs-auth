@@ -109,15 +109,45 @@ describe("broadcast", () => {
     }
   });
 
-  it("storage event on mm_account_id triggers account-changed (happy-dom)", () => {
-    const { client } = makeClient(routes, { storage: localStorage, broadcast: true });
+  function withoutBroadcastChannel<T>(run: () => T): T {
+    const original = globalThis.BroadcastChannel;
+    // biome-ignore lint/suspicious/noExplicitAny: removing a global for the test
+    (globalThis as any).BroadcastChannel = undefined;
+    try {
+      return run();
+    } finally {
+      globalThis.BroadcastChannel = original;
+    }
+  }
+
+  it("storage event on mm_account_id (fallback, no BroadcastChannel) emits account-changed and clears tokens", async () => {
+    const { client, net } = withoutBroadcastChannel(() =>
+      makeClient(routes, { storage: localStorage, broadcast: true }),
+    );
+    client.selectAccount(ACCOUNT_A);
+    await client.getToken({ accountId: ACCOUNT_A });
     const events: AuthEvent[] = [];
     client.onChange((e) => events.push(e));
     localStorage.setItem("mm_account_id", ACCOUNT_B);
     window.dispatchEvent(new StorageEvent("storage", { key: "other" }));
     window.dispatchEvent(new StorageEvent("storage", { key: "mm_account_id" }));
     expect(events).toEqual([{ type: "account-changed", accountId: ACCOUNT_B }]);
+    await client.getToken({ accountId: ACCOUNT_A });
+    expect(net.count("POST /api/v1/auth/token")).toBe(2);
     client.dispose();
+  });
+
+  it("with a channel, one change in another tab emits account-changed once (storage event ignored)", () => {
+    const hub = new FakeBroadcastHub();
+    const tab1 = makeClient(routes, { broadcast: hub.factory, storage: localStorage });
+    const tab2 = makeClient(routes, { broadcast: hub.factory, storage: localStorage });
+    const events: AuthEvent[] = [];
+    tab2.client.onChange((e) => events.push(e));
+    tab1.client.selectAccount(ACCOUNT_B);
+    window.dispatchEvent(new StorageEvent("storage", { key: "mm_account_id" }));
+    expect(events).toEqual([{ type: "account-changed", accountId: ACCOUNT_B }]);
+    tab1.client.dispose();
+    tab2.client.dispose();
   });
 
   it("dispose closes the channel and removes listeners", () => {

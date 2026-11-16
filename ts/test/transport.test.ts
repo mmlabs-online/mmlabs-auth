@@ -90,6 +90,37 @@ describe("transport", () => {
     expect(net.calls).toHaveLength(0);
   });
 
+  it("authFetch refuses traversal out of /api/v1/auth/ (.., %2e, %2E)", () => {
+    const { net } = makeClient();
+    for (const baseUrl of ["https://api.mmlabs.online", "https://api.mmlabs.online/identity"]) {
+      const t = createTransport({ baseUrl, appKey: "ricotdin", fetch: net.fetch, now: () => 0 });
+      for (const path of [
+        "/api/v1/auth/../orgs",
+        "/api/v1/auth/../../.well-known/jwks.json",
+        "/api/v1/auth/%2e%2e/orgs",
+        "/api/v1/auth/%2E%2E/orgs",
+        "/api/v1/auth/.%2e/orgs",
+      ]) {
+        expect(() => t.authFetch(path, "GET")).toThrow(TypeError);
+      }
+    }
+    expect(net.calls).toHaveLength(0);
+  });
+
+  it("authFetch accepts an auth path under a baseUrl with a path prefix", async () => {
+    const { net } = makeClient({
+      "GET /identity/api/v1/auth/accounts": () => json(200, { items: [] }),
+    });
+    const t = createTransport({
+      baseUrl: "https://api.mmlabs.online/identity",
+      appKey: "ricotdin",
+      fetch: net.fetch,
+      now: () => 0,
+    });
+    expect((await t.authFetch("/api/v1/auth/accounts", "GET")).status).toBe(200);
+    expect(net.calls[0]?.url).toBe("https://api.mmlabs.online/identity/api/v1/auth/accounts");
+  });
+
   it("Content-Type is set only when there is a body", async () => {
     const { client, net } = makeClient(routes);
     await client.listAccounts();

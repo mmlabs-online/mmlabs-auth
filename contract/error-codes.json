@@ -1,0 +1,41 @@
+{
+  "codes": {
+    "session_invalid": { "status": 401, "class": "SessionInvalidError", "typed": true },
+    "invalid_credentials": { "status": 401, "class": "InvalidCredentialsError", "typed": true },
+    "not_member": { "status": 403, "class": "NotMemberError", "typed": true },
+    "email_unverified": { "status": 403, "class": "EmailUnverifiedError", "typed": true },
+    "turnstile_required": { "status": 403, "class": "TurnstileRequiredError", "typed": true },
+    "turnstile_failed": { "status": 403, "class": "TurnstileFailedError", "typed": true },
+    "join_closed": { "status": 403, "class": "JoinUnavailableError", "typed": true },
+    "join_approval_unavailable": { "status": 403, "class": "JoinUnavailableError", "typed": true },
+    "join_unavailable": { "status": 403, "class": "JoinUnavailableError", "typed": true },
+    "audience_mismatch": { "status": 403, "class": "ConfigurationError", "typed": true },
+    "app_header_required": { "status": 403, "class": "ConfigurationError", "typed": true },
+    "origin_not_allowed": { "status": 403, "class": "ConfigurationError", "typed": true },
+    "app_mismatch": { "status": 403, "class": "ConfigurationError", "typed": true },
+    "org_not_supported": { "status": 422, "class": "ConfigurationError", "typed": true },
+    "permission_denied": { "status": 403, "class": "AuthError", "typed": false },
+    "email_taken": { "status": 409, "class": "EmailTakenError", "typed": true },
+    "email_already_verified": { "status": 409, "class": "EmailAlreadyVerifiedError", "typed": true },
+    "validation_error": { "status": 422, "class": "ValidationError", "typed": true },
+    "weak_password": { "status": 422, "class": "WeakPasswordError", "typed": true },
+    "token_invalid": { "status": 422, "class": "TokenInvalidError", "typed": true },
+    "rate_limited": { "status": 429, "class": "RateLimitedError", "typed": true },
+    "not_found": { "status": 404, "class": "AuthError", "typed": false },
+    "method_not_allowed": { "status": 405, "class": "AuthError", "typed": false },
+    "payload_too_large": { "status": 413, "class": "AuthError", "typed": false },
+    "unsupported_media_type": { "status": 415, "class": "AuthError", "typed": false }
+  },
+  "library_codes": {
+    "ts": {
+      "no_account_selected": { "status": 0, "class": "AuthError" },
+      "network_error": { "status": 0, "class": "NetworkError" },
+      "unexpected_response": { "status": 0, "class": "AuthError" }
+    },
+    "python": {
+      "unauthorized": { "status": 401 },
+      "permission_denied": { "status": 403 },
+      "auth_unavailable": { "status": 503 }
+    }
+  }
+}

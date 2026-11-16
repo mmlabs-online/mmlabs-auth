@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "headers": { "Cache-Control": "no-store" },
+  "body": {
+    "access_token": "dummy-access-token-not-a-jwt",
+    "token_type": "Bearer",
+    "expires_in": 900,
+    "audience": "admin"
+  }
+}

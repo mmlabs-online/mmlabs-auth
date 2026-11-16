@@ -1,0 +1,3 @@
+74e9b629d36188758765d8714f4a3733a111f4d4
+# org-admin-api commit (mmlabs-online/org-admin-api) the contract/*.json files were taken from.
+# Refresh: re-derive the files from that repo's app/core/errors.py, app/modules/*/ and docs/consumers.md, then write `git rev-parse origin/main` here.
